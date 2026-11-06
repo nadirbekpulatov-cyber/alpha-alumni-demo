@@ -64,7 +64,7 @@
     tabsEl.hidden = !tabs;
     if (tabs) {
       const n = S.me.filled ? S.inc.filter(r => r.st === 'new').length : 0;
-      const t = (id, h, label, icon, badge) => `<a class="tab" href="${h}" ${tabs === id ? 'aria-current="page"' : ''}>${ico(icon)}<span>${label}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</a>`;
+      const t = (id, h, label, icon, badge) => `<a class="tab" href="${h}" ${tabs === id ? 'aria-current="page"' : ''}><span class="pill">${ico(icon)}</span><span>${label}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</a>`;
       tabsEl.innerHTML = '<div class="in">' + t('catalog', '#catalog', 'Каталог', 'search') + t('board', '#board', 'Вопросы', 'ask') + t('req', '#req', 'Запросы', 'inbox', n) + t('me', '#me', 'Профиль', 'user') + '</div>';
     }
     app.classList.toggle('no-tabs', !tabs);
@@ -467,7 +467,7 @@
         <button data-rt="in" aria-pressed="${tab === 'in'}">Ко мне ${nIn}</button></div>
       <div class="group">${tab === 'out' ? outHTML : inHTML}</div>
       ${tab === 'in' && S.me.filled ? '<p class="hint">Решить можно здесь или в боте. В день приходит не больше трёх новых запросов, остальные — назавтра.</p>' : ''}`;
-    app.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { S.reqTab = b.dataset.rt; save(); viewReq(); });
+    app.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { if (S.reqTab === b.dataset.rt) return; S.reqTab = b.dataset.rt; save(); slideThen(b, viewReq); });
     app.querySelectorAll('[data-tg]').forEach(b => b.onclick = () => toast('В пилоте откроется чат в Telegram'));
     app.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { const r = S.out.find(x => x.id === b.dataset.id); r.helped = b.dataset.h; save(); viewReq(); });
     app.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
@@ -515,7 +515,8 @@
       <div id="qlist">${list.length ? list.map(qCard).join('') : `<div class="state"><h3>${f === 'razbor' ? 'Разборов пока нет' : 'В вашей сфере вопросов пока нет'}</h3><p>Задайте первый — ответы придут в бот.</p><a class="btn main" href="#newq">Задать вопрос</a></div>`}</div>`;
     app.querySelectorAll('[data-bf]').forEach(b => b.onclick = () => {
       if (b.dataset.bf === 'sp' && !sp) return toast('Укажите сферу в профиле — подборка заработает');
-      S.boardF = b.dataset.bf; save(); viewBoard();
+      if (S.boardF === b.dataset.bf) return;
+      S.boardF = b.dataset.bf; save(); slideThen(b, viewBoard);
     });
     const tosp = document.getElementById('tosp');
     if (tosp) tosp.onclick = () => { S.boardF = 'sp'; save(); viewBoard(); };
@@ -762,11 +763,19 @@
     const cv = document.getElementById('ribbons'), w = innerWidth, h = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
     cv.width = w * dpr; cv.height = h * dpr;
     const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-    x.lineWidth = .6; x.strokeStyle = 'rgba(78,84,107,.18)';
-    const W = [80, 56].map(v => v * Math.max(1, w / 420)), N = [24, 18], S2 = 120;
+    rCv = cv; rX = x; rW = w; rH = h; drawRibbons(rT0);
+  }
+  // Фон +20 % (выбор Надыра 06.11): ленты 30 %, медленный дрейф ~30 с, два свечения в CSS.
+  let rCv, rX, rW, rH, rT0 = 0, rLast = 0;
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  function drawRibbons(t) {
+    const x = rX, w = rW, h = rH; if (!x) return;
+    x.clearRect(0, 0, w, h);
+    x.lineWidth = .6; x.strokeStyle = 'rgba(78,84,107,.30)';
+    const W = [80, 56].map(v => v * Math.max(1, w / 420)), N = [24, 18], S2 = 120, ph = t * 2 * Math.PI / 30;
     R.forEach((pts, a) => {
       const c = Array.from({ length: S2 + 1 }, (_, j) => { const [px, py] = spline(pts, j / S2); return [px * w, py * h]; });
-      const half = c.map((_, j) => W[a] / 2 * (.25 + .75 * Math.abs(Math.sin(j / S2 * Math.PI * 1.6 + a))));
+      const half = c.map((_, j) => W[a] / 2 * (.25 + .75 * Math.abs(Math.sin(j / S2 * Math.PI * 1.6 + a + ph * (a ? -.5 : 1)))));
       x.beginPath();
       for (let i = 0; i < N[a]; i++) {
         const o = i / (N[a] - 1) - .5;
@@ -778,8 +787,118 @@
       x.stroke();
     });
   }
+  function ribbonLoop(now) {
+    requestAnimationFrame(ribbonLoop);
+    if (still.matches || document.hidden || now - rLast < 66) return; // ~15 кадров/с, хватает для медленного дрейфа
+    rLast = now; rT0 = now / 1000; drawRibbons(rT0);
+  }
+  requestAnimationFrame(ribbonLoop);
+
+  // Кнопки «Глянец + стрелка» и переезжающая капсула в переключателях — достраиваются после каждого рендера.
+  const ARROW = '<svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  // Сначала капсула доезжает, потом экран перерисовывается — новая капсула встаёт на то же место.
+  function slideThen(b, fn) {
+    b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (still.matches) fn(); else setTimeout(fn, 240);
+  }
+  function placeThumb(seg) {
+    const th = seg.querySelector(':scope > .thumb'), b = seg.querySelector('[aria-pressed="true"]');
+    if (!th) return;
+    if (!b) { th.style.opacity = 0; return; }
+    th.style.opacity = 1; th.style.width = b.offsetWidth + 'px'; th.style.transform = `translateX(${b.offsetLeft - 3}px)`;
+  }
+  function decorate(root) {
+    root.querySelectorAll('.btn.main.wide:not([data-deco])').forEach(b => {
+      b.dataset.deco = 1;
+      const icon = b.querySelector(':scope > .ico');
+      const nub = document.createElement('span'); nub.className = 'nub'; nub.setAttribute('aria-hidden', 'true');
+      if (icon) nub.appendChild(icon); else nub.innerHTML = ARROW;
+      const txt = document.createElement('span'); txt.className = 'txt';
+      while (b.firstChild) txt.appendChild(b.firstChild);
+      b.append(txt, nub);
+    });
+    root.querySelectorAll('.seg:not([data-deco])').forEach(seg => {
+      seg.dataset.deco = 1;
+      const th = document.createElement('i'); th.className = 'thumb'; th.setAttribute('aria-hidden', 'true');
+      seg.prepend(th); seg.classList.add('slide');
+      th.style.transition = 'none'; placeThumb(seg); th.offsetWidth; th.style.transition = '';
+    });
+  }
+  const mo = new MutationObserver(muts => {
+    for (const m of muts) {
+      if (m.type === 'attributes') { const seg = m.target.closest('.seg.slide'); if (seg) placeThumb(seg); }
+    }
+    decorate(document.body);
+  });
+  mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
+  if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.seg.slide').forEach(placeThumb));
+
+  // ---------- Отзыв тестера (только на время теста, 06.11) ----------
+  // Мурад, Антон, Камила, Иззат. Личная ссылка ?t=murad сразу подставляет имя.
+  const TESTERS = { murad: 'Мурад', anton: 'Антон', kamila: 'Камила', izzat: 'Иззат' };
+  const FB_URL = location.hostname.endsWith('github.io') ? 'https://alpha-alumni-demo.nadirbek-pulatov-87c.workers.dev/api/feedback' : '/api/feedback';
+  const FB_WHO = 'alpha-fb-who', FB_Q = 'alpha-fb-queue';
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const tParam = (params.get('t') || '').toLowerCase();
+  if (TESTERS[tParam]) ls.set(FB_WHO, TESTERS[tParam]);
+  const SCREENS = { catalog: 'Каталог', p: 'Карточка', ask: 'Запрос контакта', me: 'Профиль', req: 'Запросы', board: 'Вопросы', qa: 'Вопрос', newq: 'Задать вопрос',
+    digest: 'Дайджест', graduates: 'Для выпускников', alpha: 'Спросить ALPHA', team: 'Вкладка команды', login: 'Вход' };
+  const screenName = () => { const k = (location.hash.slice(1).split('/')[0]) || 'login'; return SCREENS[k] || k; };
+
+  async function postFb(item) {
+    const r = await fetch(FB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
+    if (!r.ok) throw new Error(r.status);
+  }
+  async function flushFb() {
+    let q; try { q = JSON.parse(ls.get(FB_Q) || '[]'); } catch (e) { q = []; }
+    if (!q.length) return;
+    const left = [];
+    for (const it of q) { try { await postFb(it); } catch (e) { left.push(it); } }
+    ls.set(FB_Q, JSON.stringify(left));
+  }
+
+  const fbBtn = document.createElement('button');
+  fbBtn.className = 'fb'; fbBtn.type = 'button'; fbBtn.textContent = 'Отзыв';
+  fbBtn.setAttribute('aria-label', 'Оставить отзыв о прототипе');
+  document.body.appendChild(fbBtn);
+  fbBtn.onclick = () => {
+    const screen = screenName();
+    let mood = 0, who = ls.get(FB_WHO) || '';
+    const names = [...Object.values(TESTERS), 'Другой'];
+    const sh = openSheet({ title: 'Отзыв о прототипе', body: `
+      <p class="hint" style="margin:0 2px 4px">Экран: <b style="color:var(--fg);font-weight:500">${esc(screen)}</b>. Пишите как есть — что мешает, что непонятно, чего не хватает.</p>
+      <p class="lbl2">Как вам этот экран?</p>
+      <div class="seg big" role="group" aria-label="Оценка"><button data-m="1" aria-pressed="false">Сложно</button><button data-m="2" aria-pressed="false">Нормально</button><button data-m="3" aria-pressed="false">Удобно</button></div>
+      <p class="lbl2">Что сказать</p>
+      <textarea class="inp" id="fbt" maxlength="2000" placeholder="Например: не понял, куда нажать, чтобы…"></textarea>
+      <p class="err" id="fberr" hidden>Выберите оценку или напишите пару слов</p>
+      <p class="lbl2">Кто вы</p>
+      <div class="row">${names.map(n => `<button class="chip" data-w="${esc(n)}" aria-pressed="${who === n}">${esc(n)}</button>`).join('')}</div>`,
+      foot: `<button class="btn main wide" id="fbsend">${ico('send')}Отправить отзыв</button>` });
+    sh.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mood = +b.dataset.m; sh.querySelectorAll('[data-m]').forEach(x => x.setAttribute('aria-pressed', x === b)); sh.querySelector('#fberr').hidden = true; });
+    sh.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { who = b.dataset.w; ls.set(FB_WHO, who); sh.querySelectorAll('[data-w]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+    const ta = sh.querySelector('#fbt');
+    ta.oninput = () => { sh.querySelector('#fberr').hidden = true; };
+    sh.querySelector('#fbsend').onclick = async e => {
+      const text = ta.value.trim();
+      if (!text && !mood) { sh.querySelector('#fberr').hidden = false; ta.focus(); return; }
+      const btn = e.currentTarget; btn.disabled = true;
+      btn.innerHTML = 'Отправляем <span class="dots"><i></i><i></i><i></i></span>';
+      const item = { who, screen, mood: mood || null, text, w: innerWidth };
+      try { await postFb(item); closeSheet(); toast('Спасибо! Отзыв у Надыра'); }
+      catch (err) {
+        let q; try { q = JSON.parse(ls.get(FB_Q) || '[]'); } catch (x) { q = []; }
+        q.push(item); ls.set(FB_Q, JSON.stringify(q));
+        closeSheet(); toast('Связь подвела — отзыв сохранён, отправим сами');
+      }
+    };
+  };
+  flushFb();
+  addEventListener('online', flushFb);
+
   let rT;
-  addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(ribbons, 150); });
+  addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { ribbons(); document.querySelectorAll('.seg.slide').forEach(placeThumb); }, 150); });
   ribbons();
   route();
+  decorate(document.body);
 })();

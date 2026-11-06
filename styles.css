@@ -7,6 +7,8 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --f: 'Golos Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --tabs-h: 64px;
+  --gloss: linear-gradient(180deg, #30343E 0%, #15171C 55%);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -19,7 +21,8 @@ a { color: inherit; text-decoration: none; }
 input, textarea, select { font: 400 16px/1.4 var(--f); color: var(--fg); }
 :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
-#ribbons { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+#ribbons { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;
+  background: radial-gradient(120% 60% at 100% 0%, rgba(120,150,255,.26), transparent 62%), radial-gradient(90% 50% at 0% 100%, rgba(0,121,106,.08), transparent 60%); }
 #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(var(--tabs-h) + 24px + env(safe-area-inset-bottom, 0px)); }
 #app.no-tabs { padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
@@ -35,6 +38,14 @@ h2 { font-size: 17px; font-weight: 600; margin: 26px 2px 10px; }
 .seg button { border: 0; background: none; font: 500 13px var(--f); color: var(--groove-ink); min-height: 30px; padding: 0 10px; border-radius: 999px; white-space: nowrap; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--fg); color: #fff; }
 .seg.big button { font-size: 14px; min-height: 36px; padding: 0 14px; }
+/* Капсула переезжает к выбранной кнопке */
+.seg.slide { position: relative; }
+.seg.slide button { position: relative; z-index: 1; transition: color 200ms ease; }
+.seg.slide button[aria-pressed="true"] { background: none; }
+.seg .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; border-radius: 999px; background: var(--gloss); pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 4px 10px -4px rgba(21,23,28,.5);
+  transition: transform 260ms var(--ease-in-out), width 260ms var(--ease-in-out), opacity 160ms ease; }
+.chip[aria-pressed="true"] { background: var(--gloss); box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 4px 10px -6px rgba(21,23,28,.5); }
 
 /* Кнопки */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px;
@@ -43,6 +54,23 @@ h2 { font-size: 17px; font-weight: 600; margin: 26px 2px 10px; }
 .btn:active { transform: scale(.97); }
 .btn.main { min-height: 48px; padding: 0 22px; background: var(--fg); color: #fff; box-shadow: none; font-weight: 600; }
 .btn.wide { width: 100%; }
+/* Вариант C «Глянец + стрелка» (выбор Надыра 06.11) */
+.btn:not(.main):not(.text):not([disabled]):not(.done) { background: linear-gradient(180deg, #fff, #F5F7FB);
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(21,23,28,.06), 0 6px 14px -10px rgba(21,23,28,.35);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+.btn:not(.main):not(.text):not([disabled]):not(.done):active { transform: translateY(1px) scale(.985); box-shadow: inset 0 0 0 1px var(--line-strong), inset 0 2px 4px rgba(21,23,28,.08); }
+.btn.main:not([disabled]) { background: var(--gloss);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.35), 0 1px 2px rgba(21,23,28,.25), 0 8px 18px -8px rgba(21,23,28,.55);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+.btn.main:not([disabled]):active { transform: translateY(1px) scale(.985);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 2px 6px rgba(0,0,0,.35), 0 1px 1px rgba(21,23,28,.2); }
+.btn.main:has(> .nub) { justify-content: flex-start; padding: 0 6px 0 22px; }
+.btn.main .txt { flex: 1; text-align: left; display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.btn.main .nub { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform 220ms var(--ease-out); }
+.btn.main .nub .ico { width: 18px; height: 18px; }
+.btn.main:not([disabled]):active .nub { transform: translateX(4px); }
+.btn.main[disabled] .nub { background: color-mix(in srgb, var(--faint) 14%, transparent); color: var(--faint); box-shadow: none; }
 .btn.text { background: none; box-shadow: none; padding: 0 4px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
 .btn[disabled] { background: var(--groove); color: var(--faint); box-shadow: none; cursor: default; transform: none; }
 .btn.done { background: var(--surface); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); cursor: default; transform: none; }
@@ -265,3 +293,19 @@ body.dock-on .toast { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
   .btn, .card, .chip, .iconbtn, .sheet, .scrim, .toast, .switch i::after { transition-duration: 1ms !important; }
   .btn .dots i { animation: none; opacity: .7; }
 }
+
+/* Нижние вкладки: глянцевая капсула под иконкой активной (06.11) */
+.tab .pill { display: grid; place-items: center; width: 52px; height: 30px; border-radius: 15px; transition: background-color 200ms ease, color 200ms ease; }
+.tab[aria-current="page"] .pill { background: var(--gloss); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 4px 10px -5px rgba(21,23,28,.5); }
+.tab .pill .ico { width: 20px; height: 20px; }
+.tab .badge { top: 5px; left: calc(50% + 12px); box-shadow: 0 0 0 2px var(--bg); z-index: 1; }
+.tab:active .pill { transform: scale(.94); transition: transform 120ms var(--ease-out); }
+
+/* Кнопка «Отзыв» для тестеров — жёлтая, как метка «демо»: видно, что это не часть продукта */
+.fb { position: fixed; z-index: 15; right: max(16px, calc(50% - 224px)); bottom: calc(var(--tabs-h) + 14px + env(safe-area-inset-bottom, 0px));
+  min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: #F4ECCB; color: #5E4B0E; font: 600 13px var(--f); letter-spacing: .02em; cursor: pointer;
+  box-shadow: inset 0 0 0 1px #E6D9A2, 0 6px 14px -8px rgba(94,75,14,.6); transition: transform 140ms var(--ease-out), opacity 160ms ease; }
+.fb:active { transform: scale(.96); }
+#app.no-tabs ~ .fb { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+body.dock-on #app ~ .fb { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
+.toast.on ~ .fb, body:has(.sheet.on) .fb { opacity: 0; pointer-events: none; }

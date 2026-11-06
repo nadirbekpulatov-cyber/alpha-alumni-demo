@@ -834,8 +834,8 @@
   if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.seg.slide').forEach(placeThumb));
 
   // ---------- Отзыв тестера (только на время теста, 06.11) ----------
-  // Мурад, Антон, Камила, Иззат. Личная ссылка ?t=murad сразу подставляет имя.
-  const TESTERS = { murad: 'Мурад', anton: 'Антон', kamila: 'Камила', izzat: 'Иззат' };
+  // Алишер, Александр, Мурад, Антон, Камила, Иззат. Личная ссылка ?t=murad сразу подставляет имя.
+  const TESTERS = { alisher: 'Алишер', alexander: 'Александр', murad: 'Мурад', anton: 'Антон', kamila: 'Камила', izzat: 'Иззат' };
   const FB_URL = location.hostname.endsWith('github.io') ? 'https://alpha-alumni-demo.nadirbek-pulatov-87c.workers.dev/api/feedback' : '/api/feedback';
   const FB_WHO = 'alpha-fb-who', FB_Q = 'alpha-fb-queue';
   const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
